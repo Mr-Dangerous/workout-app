@@ -4,6 +4,7 @@
   import WorkoutBuilder from './screens/WorkoutBuilder.svelte'
   import ExerciseLibrary from './screens/ExerciseLibrary.svelte'
   import Settings from './screens/Settings.svelte'
+  import Progress from './screens/Progress.svelte'
   import BottomNav from './components/BottomNav.svelte'
 
   let screen = 'selector'
@@ -43,6 +44,9 @@
 
     {:else if screen === 'library'}
       <ExerciseLibrary />
+
+    {:else if screen === 'progress'}
+      <Progress />
 
     {:else if screen === 'settings'}
       <Settings />

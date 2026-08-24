@@ -3,9 +3,13 @@
   import { exercises as exercisesStore } from '../lib/stores/exercises.js'
   import { settings } from '../lib/stores/settings.js'
   import { countdownBeep, resumeContext } from '../lib/audio.js'
+  import { logWorkout } from '../lib/stores/history.js'
 
   export let workout = null
   export let onClose = () => {}
+
+  let startTime = Date.now()
+  let logged = false
 
   // ── State machine states ──
   // EXERCISE_RIGHT, GAP, EXERCISE_LEFT, EXERCISE (unilateral), REST, COMPLETE
@@ -100,6 +104,22 @@
     clearInterval(intervalId)
     if (stepIndex < sequence.length - 1) {
       stepIndex++
+      // Log workout the moment we hit COMPLETE
+      if (sequence[stepIndex]?.type === 'COMPLETE' && !logged) {
+        logged = true
+        const durationSeconds = Math.round((Date.now() - startTime) / 1000)
+        const exercisesCompleted = sequence.filter(
+          s => s.type === 'EXERCISE' || s.type === 'EXERCISE_LEFT'
+        ).length
+        const groupsDone = workout?.groups?.length ?? 0
+        logWorkout({
+          workoutId: workout?.id,
+          workoutName: workout?.name,
+          durationSeconds,
+          exercisesCompleted,
+          groupsCompleted: groupsDone,
+        })
+      }
       startStep()
     } else {
       stepIndex = sequence.length - 1 // COMPLETE

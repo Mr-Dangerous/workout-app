@@ -5,6 +5,7 @@
   const tabs = [
     { id: 'selector', label: 'Workouts', icon: '🏠' },
     { id: 'library', label: 'Library', icon: '📚' },
+    { id: 'progress', label: 'Progress', icon: '📅' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ]
 </script>
