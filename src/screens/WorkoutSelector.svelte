@@ -64,37 +64,49 @@
     renderBodyMaps()
   }
 
+  // Refs to body-highlighter instances so we can .update() instead of re-creating
+  let frontHighlighter = null
+  let backHighlighter = null
+
+  function buildMuscleData(muscles) {
+    // body-highlighter data format: [{ muscles: [muscleId, ...], frequency: N }]
+    // frequency 2 = primary color, frequency 1 = secondary color
+    const entries = [
+      ...muscles.primary.map(m => ({ muscles: [m], frequency: 2 })),
+      ...muscles.secondary.map(m => ({ muscles: [m], frequency: 1 })),
+    ]
+    return entries
+  }
+
   function renderBodyMaps() {
     if (!bodyHighlighterLib || !frontContainer || !backContainer) return
     try {
-      frontContainer.innerHTML = ''
-      backContainer.innerHTML = ''
+      const data = buildMuscleData(allMuscles)
+      const sharedOpts = {
+        highlightedColors: ['#15803d', '#22c55e'], // [secondary, primary] indexed by frequency-1
+        bodyColor: '#374151',  // visible gray on dark bg
+        data,
+      }
 
-      const muscleData = [
-        ...allMuscles.primary.map(m => ({ slug: m, intensity: 1 })),
-        ...allMuscles.secondary.map(m => ({ slug: m, intensity: 0.4 })),
-      ]
+      if (frontHighlighter) {
+        frontHighlighter.update({ ...sharedOpts, type: 'anterior' })
+      } else {
+        frontHighlighter = bodyHighlighterLib.createBodyHighlighter({
+          ...sharedOpts,
+          container: frontContainer,
+          type: 'anterior',
+        })
+      }
 
-      bodyHighlighterLib.highlightBody({
-        target: frontContainer,
-        data: muscleData,
-        side: 'front',
-        colors: {
-          skin: '#2a2a2a',
-          selected: '#22c55e',
-          background: 'transparent',
-        },
-      })
-      bodyHighlighterLib.highlightBody({
-        target: backContainer,
-        data: muscleData,
-        side: 'back',
-        colors: {
-          skin: '#2a2a2a',
-          selected: '#22c55e',
-          background: 'transparent',
-        },
-      })
+      if (backHighlighter) {
+        backHighlighter.update({ ...sharedOpts, type: 'posterior' })
+      } else {
+        backHighlighter = bodyHighlighterLib.createBodyHighlighter({
+          ...sharedOpts,
+          container: backContainer,
+          type: 'posterior',
+        })
+      }
     } catch (e) {
       console.error('Body highlighter error:', e)
     }
