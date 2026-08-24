@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workout Timer — Card Stack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #111; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; gap: 48px; padding: 40px 16px; }
+    .phone-label { color: #555; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; margin-bottom: -36px; }
+    .phone {
+      width: 375px;
+      min-height: 812px;
+      background: #0d0d0d;
+      border-radius: 48px;
+      border: 2px solid #222;
+      box-shadow: 0 0 0 8px #181818, 0 32px 80px rgba(0,0,0,.85);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    :root { --accent: #3b82f6; --accent-glow: rgba(59,130,246,.35); --accent-dim: rgba(59,130,246,.12); }
+
+    .status-bar { height: 44px; background: #0d0d0d; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; flex-shrink: 0; }
+    .status-time { color: #fff; font-size: 15px; font-weight: 600; }
+
+    /* Top strip */
+    .top-bar { padding: 6px 20px 12px; display: flex; align-items: center; gap: 12px; }
+    .back-btn { width: 36px; height: 36px; background: #1a1a1a; border-radius: 12px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; }
+    .back-btn svg { width: 16px; height: 16px; stroke: #888; fill: none; }
+    .top-info { flex: 1; }
+    .top-workout { color: #fff; font-size: 14px; font-weight: 700; }
+    .top-group { color: #555; font-size: 12px; margin-top: 1px; }
+    .top-menu { width: 36px; height: 36px; background: #1a1a1a; border-radius: 12px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; }
+    .top-menu svg { width: 16px; height: 16px; stroke: #888; fill: none; }
+
+    /* Thin progress */
+    .progress-track { margin: 0 20px 16px; }
+    .progress-meta { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .progress-pct { color: #3b82f6; font-size: 11px; font-weight: 700; }
+    .progress-remain { color: #444; font-size: 11px; }
+    .track { height: 3px; background: #1e1e1e; border-radius: 100px; }
+    .track-fill { height: 3px; background: var(--accent); border-radius: 100px; width: 60%; box-shadow: 0 0 8px var(--accent-glow); }
+
+    /* Card stack container — fixed height so peek cards show behind main */
+    .card-viewport {
+      position: relative;
+      margin: 0 16px 28px;
+      height: 460px;
+      flex-shrink: 0;
+    }
+
+    /* Stack peek behind — visible at bottom, further offset = more depth */
+    .card-peek-3 {
+      position: absolute;
+      top: 0; left: 24px; right: 24px;
+      bottom: 0;
+      background: #252525;
+      border-radius: 24px;
+      border: 1px solid #303030;
+      z-index: 1;
+      transform: translateY(22px) scaleX(0.84);
+      transform-origin: bottom center;
+    }
+    .card-peek-2 {
+      position: absolute;
+      top: 0; left: 12px; right: 12px;
+      bottom: 0;
+      background: #202020;
+      border-radius: 26px;
+      border: 1px solid #2a2a2a;
+      z-index: 2;
+      transform: translateY(11px) scaleX(0.92);
+      transform-origin: bottom center;
+    }
+
+    /* Main card */
+    .exercise-card-main {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      z-index: 10;
+      background: #1a1a1a;
+      border-radius: 28px;
+      border: 1px solid #2a2a2a;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,.6);
+    }
+
+    /* Card top accent strip */
+    .card-accent-strip { height: 4px; background: linear-gradient(90deg, var(--accent), rgba(59,130,246,.2)); }
+
+    .card-inner { padding: 24px 24px 20px; }
+
+    /* Exercise header */
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; }
+    .card-ex-id { display: inline-flex; align-items: center; gap: 6px; }
+    .card-id-badge { background: var(--accent-dim); color: var(--accent); font-size: 11px; font-weight: 800; padding: 4px 9px; border-radius: 8px; letter-spacing: .06em; }
+    .card-bilateral { background: #222; color: #666; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 8px; letter-spacing: .06em; text-transform: uppercase; }
+    .card-swipe-hint { color: #2a2a2a; font-size: 10px; font-weight: 600; }
+
+    .card-ex-name { font-size: 34px; font-weight: 900; color: #fff; letter-spacing: -.025em; line-height: 1.05; margin-bottom: 4px; }
+    .card-side { display: inline-block; background: var(--accent); color: #fff; font-size: 13px; font-weight: 800; letter-spacing: .14em; padding: 5px 14px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 0 16px var(--accent-glow); }
+
+    /* Timer block */
+    .timer-block { background: #111; border-radius: 20px; padding: 20px 20px 16px; margin-bottom: 20px; display: flex; flex-direction: column; align-items: center; }
+    .timer-label { color: #444; font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 8px; }
+    .timer-display { font-size: 88px; font-weight: 900; color: #fff; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 0 60px rgba(59,130,246,.3); }
+    .timer-subrow { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+    .timer-duration { color: #333; font-size: 13px; }
+    /* Inline mini progress bar */
+    .timer-mini-rail { flex: 1; height: 3px; background: #222; border-radius: 100px; }
+    .timer-mini-fill { height: 3px; background: var(--accent); border-radius: 100px; width: 57%; }
+
+    /* Set pips */
+    .set-pips { display: flex; align-items: center; gap: 6px; margin-bottom: 0; }
+    .set-pip-label { color: #444; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-right: 4px; }
+    .pip { width: 32px; height: 6px; border-radius: 3px; background: #222; }
+    .pip.done { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+    .pip.active { background: rgba(59,130,246,.35); border: 1px solid var(--accent); }
+
+    /* Controls row */
+    .card-controls { display: flex; align-items: center; justify-content: space-between; padding: 0 24px 20px; gap: 8px; }
+    .ccl { width: 52px; height: 52px; background: #151515; border: 1px solid #222; border-radius: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; }
+    .ccl svg { width: 20px; height: 20px; stroke: #666; fill: none; stroke-width: 2; }
+    .ccl-main { background: var(--accent); border-radius: 20px; width: 80px; height: 60px; box-shadow: 0 0 24px var(--accent-glow); border: none; }
+    .ccl-main svg { stroke: #fff; }
+
+    /* Swipe indicators */
+    .swipe-row { display: flex; justify-content: space-between; padding: 0 20px; margin-bottom: 12px; }
+    .swipe-hint { display: flex; align-items: center; gap: 5px; color: #2a2a2a; font-size: 10px; font-weight: 600; }
+    .swipe-hint svg { width: 12px; height: 12px; stroke: #2a2a2a; fill: none; }
+
+    /* Next card preview */
+    .next-preview { margin: 0 16px 16px; }
+    .next-preview-inner { background: #141414; border: 1px solid #1e1e1e; border-radius: 16px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+    .next-icon { width: 32px; height: 32px; background: #1e1e1e; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .next-icon svg { width: 14px; height: 14px; stroke: #555; fill: none; }
+    .next-text { flex: 1; }
+    .next-text-label { color: #444; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 3px; }
+    .next-text-name { color: #999; font-size: 14px; font-weight: 600; }
+    .next-arrow-icon svg { width: 14px; height: 14px; stroke: #333; fill: none; }
+  </style>
+</head>
+<body>
+
+<!-- ===== PHONE 1: CARD STACK — ACTIVE EXERCISE ===== -->
+<div class="phone-label">Card Stack — Active Exercise</div>
+<div class="phone">
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div style="display:flex; gap:6px; align-items:center;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="1" y="6" width="18" height="12" rx="2"/><path d="M23 10v4"/></svg>
+    </div>
+  </div>
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <button class="back-btn"><svg viewBox="0 0 24 24" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <div class="top-info">
+      <div class="top-workout">Full Body Bands A</div>
+      <div class="top-group">Group B · Set 2 of 3</div>
+    </div>
+    <button class="top-menu"><svg viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-track">
+    <div class="progress-meta">
+      <span class="progress-pct">60% complete</span>
+      <span class="progress-remain">~14 min left</span>
+    </div>
+    <div class="track"><div class="track-fill"></div></div>
+  </div>
+
+  <!-- Card stack -->
+  <div class="card-viewport">
+    <!-- Background card peeks -->
+    <div class="card-peek-3"></div>
+    <div class="card-peek-2"></div>
+
+    <!-- Main card -->
+    <div class="exercise-card-main">
+      <div class="card-accent-strip"></div>
+      <div class="card-inner">
+        <div class="card-header">
+          <div class="card-ex-id">
+            <span class="card-id-badge">B1</span>
+            <span class="card-bilateral">R/L</span>
+          </div>
+          <span class="card-swipe-hint">swipe to skip →</span>
+        </div>
+        <div class="card-ex-name">Hammer Curls</div>
+        <div class="card-side">RIGHT</div>
+
+        <!-- Timer -->
+        <div class="timer-block">
+          <div class="timer-label">Time Remaining</div>
+          <div class="timer-display">0:23</div>
+          <div class="timer-subrow">
+            <span class="timer-duration">0:40</span>
+            <div class="timer-mini-rail"><div class="timer-mini-fill"></div></div>
+          </div>
+        </div>
+
+        <!-- Set pips -->
+        <div class="set-pips">
+          <span class="set-pip-label">Sets</span>
+          <div class="pip done"></div>
+          <div class="pip active"></div>
+          <div class="pip"></div>
+        </div>
+      </div>
+
+      <!-- Card controls -->
+      <div class="card-controls">
+        <button class="ccl" title="Back"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+        <button class="ccl ccl-main" title="Pause"><svg viewBox="0 0 24 24" stroke-width="2.5" stroke="#fff"><line x1="10" y1="7" x2="10" y2="17"/><line x1="14" y1="7" x2="14" y2="17"/></svg></button>
+        <button class="ccl" title="Skip"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Swipe hints -->
+  <div class="swipe-row">
+    <div class="swipe-hint">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      prev
+    </div>
+    <div class="swipe-hint">
+      next
+      <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </div>
+
+  <!-- Next preview strip -->
+  <div class="next-preview">
+    <div class="next-preview-inner">
+      <div class="next-icon"><svg viewBox="0 0 24 24" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+      <div class="next-text">
+        <div class="next-text-label">Next up</div>
+        <div class="next-text-name">Overhead Tricep Extension · RIGHT</div>
+      </div>
+      <div class="next-arrow-icon"><svg viewBox="0 0 24 24" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PHONE 2: CARD STACK — BETWEEN SETS (PAUSED) ===== -->
+<div class="phone-label">Card Stack — Paused / Set Complete</div>
+<div class="phone" style="background:#0a0a0a;">
+  <div class="status-bar" style="background:#0a0a0a;">
+    <span class="status-time">9:41</span>
+  </div>
+
+  <div class="top-bar">
+    <button class="back-btn"><svg viewBox="0 0 24 24" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <div class="top-info">
+      <div class="top-workout">Full Body Bands A</div>
+      <div class="top-group">Group B · Set 2 of 3 complete</div>
+    </div>
+    <button class="top-menu"><svg viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+  </div>
+
+  <div class="progress-track">
+    <div class="progress-meta">
+      <span class="progress-pct">63% complete</span>
+      <span class="progress-remain">~12 min left</span>
+    </div>
+    <div class="track"><div class="track-fill" style="width:63%"></div></div>
+  </div>
+
+  <div class="card-viewport">
+    <div class="card-peek-3" style="background:#101010;"></div>
+    <div class="card-peek-2" style="background:#141414;"></div>
+
+    <div class="exercise-card-main" style="background:#1c1c1c;">
+      <div class="card-accent-strip" style="background:linear-gradient(90deg,#fff,rgba(255,255,255,.1));opacity:.08"></div>
+      <div class="card-inner">
+        <div style="text-align:center; padding: 12px 0 20px;">
+          <div style="width:56px;height:56px;background:rgba(59,130,246,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div style="color:#fff;font-size:20px;font-weight:800;margin-bottom:4px;">Set 2 Complete</div>
+          <div style="color:#555;font-size:13px;">Hammer Curls · Group B</div>
+        </div>
+
+        <!-- Rest timer -->
+        <div class="timer-block" style="margin-bottom:16px;">
+          <div class="timer-label">Rest</div>
+          <div class="timer-display" style="font-size:76px; color:var(--accent)">0:45</div>
+          <div style="color:#333;font-size:12px;margin-top:8px;">Auto-starts next set</div>
+        </div>
+
+        <!-- Set pips showing 2 done -->
+        <div class="set-pips" style="margin-bottom:0;">
+          <span class="set-pip-label">Sets</span>
+          <div class="pip done"></div>
+          <div class="pip done"></div>
+          <div class="pip" style="background:#1a1a1a;"></div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="card-controls">
+        <button class="ccl"><svg viewBox="0 0 24 24" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.1"/></svg></button>
+        <button class="ccl ccl-main" style="background:#3b82f6; box-shadow: 0 0 24px rgba(59,130,246,.4);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" width="24" height="24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </button>
+        <button class="ccl"><svg viewBox="0 0 24 24" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="swipe-row">
+    <div class="swipe-hint"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>prev</div>
+    <div class="swipe-hint">next<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>
+
+  <div class="next-preview">
+    <div class="next-preview-inner">
+      <div class="next-icon" style="background:rgba(59,130,246,.12);">
+        <svg viewBox="0 0 24 24" stroke-width="2" stroke="#3b82f6" fill="none"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="next-text">
+        <div class="next-text-label">Set 3 starts next</div>
+        <div class="next-text-name" style="color:#ccc;">Hammer Curls · LEFT</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

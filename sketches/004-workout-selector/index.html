@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workout App — Workout Selector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #111;
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 48px;
+      padding: 40px 16px 80px;
+    }
+    :root {
+      --accent: #22c55e;
+      --accent-dim: rgba(34,197,94,.15);
+      --accent-glow: rgba(34,197,94,.35);
+      --accent-secondary: rgba(34,197,94,.45);
+      --bg: #0f0f0f;
+      --surface: #161616;
+      --surface2: #1e1e1e;
+      --border: #252525;
+      --text-primary: #fff;
+      --text-secondary: #888;
+      --text-muted: #444;
+    }
+
+    .phone-label {
+      color: #555;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-bottom: -36px;
+    }
+
+    /* ── Phone Shell ── */
+    .phone {
+      width: 375px;
+      min-height: 812px;
+      background: var(--bg);
+      border-radius: 48px;
+      border: 2px solid #2a2a2a;
+      box-shadow: 0 0 0 8px #1a1a1a, 0 32px 80px rgba(0,0,0,.8);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Status Bar ── */
+    .status-bar {
+      height: 44px;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      flex-shrink: 0;
+    }
+    .status-time { color: #fff; font-size: 15px; font-weight: 600; }
+    .status-icons { display: flex; gap: 6px; align-items: center; }
+    .status-icons svg { width: 16px; height: 16px; fill: #fff; }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 20px 12px;
+      flex-shrink: 0;
+    }
+    .header-title {
+      color: var(--text-primary);
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -.02em;
+    }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+    .icon-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .icon-btn svg { width: 17px; height: 17px; stroke: var(--text-secondary); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .icon-btn.add svg { stroke: var(--accent); }
+
+    /* ── Mode Pills ── */
+    .mode-scroll-wrap {
+      padding: 0 20px 14px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      flex-shrink: 0;
+    }
+    .mode-scroll-wrap::-webkit-scrollbar { display: none; }
+    .mode-pills {
+      display: flex;
+      gap: 8px;
+      width: max-content;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 14px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .pill-active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .pill-check {
+      width: 14px; height: 14px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pill-check svg { width: 9px; height: 9px; stroke: #000; fill: none; stroke-width: 2.5; }
+    .pill-inactive {
+      background: var(--surface2);
+      border-color: var(--border);
+      color: var(--text-secondary);
+    }
+
+    /* ── Muscle Map Section ── */
+    .muscle-section {
+      margin: 0 20px 12px;
+      background: var(--surface);
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      padding: 14px 16px;
+      flex-shrink: 0;
+    }
+    .muscle-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .muscle-label {
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .muscle-legend {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    .legend-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+    }
+    .legend-dot-primary { background: #22c55e; }
+    .legend-dot-secondary { background: rgba(34,197,94,.4); }
+    .muscle-map-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* ── Summary Bar ── */
+    .summary-bar {
+      margin: 0 20px 14px;
+      background: var(--surface);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .summary-info { flex: 1; min-width: 0; }
+    .summary-name {
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .summary-meta {
+      color: var(--text-muted);
+      font-size: 11px;
+      margin-top: 3px;
+    }
+    .start-btn {
+      background: var(--accent);
+      color: #000;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      padding: 11px 22px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      box-shadow: 0 0 20px var(--accent-glow);
+      flex-shrink: 0;
+    }
+
+    /* ── List Section Label ── */
+    .list-label {
+      padding: 0 20px 8px;
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    /* ── Workout List ── */
+    .workout-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      scrollbar-width: none;
+    }
+    .workout-list::-webkit-scrollbar { display: none; }
+
+    .workout-card {
+      background: var(--surface);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      border-left: 3px solid transparent;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+    .workout-card.selected {
+      background: #192b1f;
+      border-color: #1e3b28;
+      border-left-color: var(--accent);
+    }
+    .card-body { flex: 1; min-width: 0; }
+    .card-name {
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .workout-card:not(.selected) .card-name { color: #ccc; }
+    .card-tag {
+      display: inline-flex;
+      align-items: center;
+      background: var(--surface2);
+      border-radius: 100px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-top: 5px;
+    }
+    .workout-card.selected .card-tag {
+      background: rgba(34,197,94,.12);
+      color: var(--accent);
+    }
+    .card-stats {
+      color: var(--text-muted);
+      font-size: 11px;
+      margin-top: 5px;
+    }
+    .workout-card.selected .card-stats { color: #6b9e7c; }
+    .card-last {
+      color: #333;
+      font-size: 10px;
+      margin-top: 3px;
+    }
+    .workout-card.selected .card-last { color: #3d6b4d; }
+
+    /* Mini muscle map in cards */
+    .mini-map {
+      width: 44px;
+      height: 60px;
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+    .workout-card.selected .mini-map { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<div class="phone-label">Workout Selector</div>
+
+<div class="phone">
+
+  <!-- ── Status Bar ── -->
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons">
+      <!-- Signal -->
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="#fff">
+        <rect x="1" y="16" width="3" height="5" rx="0.5"/>
+        <rect x="6" y="12" width="3" height="9" rx="0.5"/>
+        <rect x="11" y="8" width="3" height="13" rx="0.5"/>
+        <rect x="16" y="4" width="3" height="17" rx="0.5" opacity="0.35"/>
+        <rect x="21" y="1" width="3" height="20" rx="0.5" opacity="0.15"/>
+      </svg>
+      <!-- WiFi -->
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="#fff">
+        <path d="M12 18a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/>
+        <path d="M6.3 14.7a8.5 8.5 0 0 1 11.4 0" opacity="0.5"/>
+        <path d="M2.5 11a13.5 13.5 0 0 1 19 0" opacity="0.25"/>
+      </svg>
+      <!-- Battery -->
+      <svg viewBox="0 0 25 12" width="25" height="12" fill="#fff">
+        <rect x="0.5" y="0.5" width="21" height="11" rx="3" fill="none" stroke="#fff" stroke-opacity="0.4" stroke-width="1"/>
+        <rect x="2" y="2" width="16" height="8" rx="1.5" fill="#fff"/>
+        <path d="M23 4v4a2 2 0 0 0 0-4z"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ── Header ── -->
+  <div class="header">
+    <h1 class="header-title">My Workouts</h1>
+    <div class="header-actions">
+      <!-- Settings gear -->
+      <button class="icon-btn">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <!-- Add (+) -->
+      <button class="icon-btn add">
+        <svg viewBox="0 0 24 24">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Training Mode Pills ── -->
+  <div class="mode-scroll-wrap">
+    <div class="mode-pills">
+      <div class="pill pill-active">
+        <span class="pill-check">
+          <svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg>
+        </span>
+        Resistance Bands
+      </div>
+      <div class="pill pill-inactive">Free Weights</div>
+      <div class="pill pill-inactive">Bodyweight</div>
+      <div class="pill pill-inactive">Cardio</div>
+    </div>
+  </div>
+
+  <!-- ── Muscle Coverage Map ── -->
+  <div class="muscle-section">
+    <div class="muscle-header">
+      <span class="muscle-label">Muscles Targeted</span>
+      <div class="muscle-legend">
+        <div class="legend-item">
+          <div class="legend-dot legend-dot-primary"></div>
+          Primary
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot legend-dot-secondary"></div>
+          Secondary
+        </div>
+      </div>
+    </div>
+    <div class="muscle-map-wrap">
+      <!--
+        SVG Body Map — Front View
+        Primary (green #22c55eCC): shoulders, chest, biceps, triceps, abs, quads, hamstrings, glutes
+        Secondary (green #22c55e66): calves, forearms
+        Neutral (dark): head, neck, forearms-base
+      -->
+      <svg width="130" height="220" viewBox="0 0 130 220" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="gPrimary" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#22c55e" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#22c55e" stop-opacity="0.6"/>
+          </radialGradient>
+          <radialGradient id="gSecondary" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#22c55e" stop-opacity="0.45"/>
+            <stop offset="100%" stop-color="#22c55e" stop-opacity="0.25"/>
+          </radialGradient>
+        </defs>
+
+        <!-- ── Torso base (neutral body silhouette) ── -->
+        <!-- Body outline fill -->
+        <path d="
+          M 50 44
+          C 42 44 36 50 35 58
+          L 33 72
+          C 32 76 30 78 28 80
+          L 18 86
+          C 14 88 12 92 12 96
+          L 12 128
+          C 12 132 14 135 18 136
+          L 22 137
+          L 22 150
+          L 24 178
+          C 24 183 28 186 33 186
+          L 38 186
+          L 38 178
+          L 40 155
+          L 42 148
+          L 45 148
+          L 45 155
+          L 45 186
+          L 50 186
+          L 52 186
+          L 58 186
+          L 62 186
+          L 65 186
+          L 68 186
+          L 72 186
+          L 75 186
+          L 80 186
+          L 85 186
+          L 85 155
+          L 85 148
+          L 88 148
+          L 90 155
+          L 92 178
+          L 92 186
+          L 97 186
+          L 102 186
+          C 107 186 111 183 111 178
+          L 113 150
+          L 113 137
+          L 117 136
+          C 121 135 123 132 123 128
+          L 123 96
+          C 123 92 121 88 117 86
+          L 107 80
+          C 105 78 103 76 102 72
+          L 100 58
+          C 99 50 93 44 85 44
+          Z
+        " fill="#1a1a1a" stroke="#2e2e2e" stroke-width="1"/>
+
+        <!-- ── HEAD ── -->
+        <ellipse cx="65" cy="20" rx="14" ry="17" fill="#222" stroke="#2e2e2e" stroke-width="1"/>
+        <!-- Neck -->
+        <rect x="59" y="35" width="12" height="12" rx="3" fill="#1f1f1f" stroke="#2a2a2a" stroke-width="0.5"/>
+
+        <!-- ── LEFT SHOULDER (viewer's right) ── -->
+        <ellipse id="left-shoulder" cx="105" cy="76" rx="14" ry="11"
+          fill="url(#gPrimary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.4"/>
+
+        <!-- ── RIGHT SHOULDER (viewer's left) ── -->
+        <ellipse id="right-shoulder" cx="25" cy="76" rx="14" ry="11"
+          fill="url(#gPrimary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.4"/>
+
+        <!-- ── CHEST ── -->
+        <path id="chest"
+          d="M 48 58 C 46 60 44 66 44 72 L 44 82 C 44 84 45 85 47 85 L 65 85 L 83 85 C 85 85 86 84 86 82 L 86 72 C 86 66 84 60 82 58 C 78 55 72 54 65 54 C 58 54 52 55 48 58 Z"
+          fill="url(#gPrimary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.4"/>
+        <!-- Chest line -->
+        <line x1="65" y1="56" x2="65" y2="84" stroke="#22c55e" stroke-width="0.4" stroke-opacity="0.25"/>
+
+        <!-- ── LEFT BICEP ── -->
+        <ellipse id="left-bicep" cx="108" cy="97" rx="8" ry="14"
+          fill="url(#gPrimary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.4"/>
+
+        <!-- ── RIGHT BICEP ── -->
+        <ellipse id="right-bicep" cx="22" cy="97" rx="8" ry="14"
+          fill="url(#gPrimary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.4"/>
+
+        <!-- ── LEFT TRICEP (outer arm) ── -->
+        <ellipse id="left-tricep" cx="118" cy="100" rx="6" ry="12"
+          fill="url(#gPrimary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.4"/>
+
+        <!-- ── RIGHT TRICEP (outer arm) ── -->
+        <ellipse id="right-tricep" cx="12" cy="100" rx="6" ry="12"
+          fill="url(#gPrimary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.4"/>
+
+        <!-- ── LEFT FOREARM ── -->
+        <ellipse id="left-forearm" cx="113" cy="122" rx="7" ry="12"
+          fill="url(#gSecondary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.3"/>
+
+        <!-- ── RIGHT FOREARM ── -->
+        <ellipse id="right-forearm" cx="17" cy="122" rx="7" ry="12"
+          fill="url(#gSecondary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.3"/>
+
+        <!-- Hands -->
+        <ellipse cx="116" cy="138" rx="6" ry="5" fill="#1e1e1e" stroke="#2a2a2a" stroke-width="0.5"/>
+        <ellipse cx="14" cy="138" rx="6" ry="5" fill="#1e1e1e" stroke="#2a2a2a" stroke-width="0.5"/>
+
+        <!-- ── ABS / CORE ── -->
+        <path id="abs"
+          d="M 52 86 L 52 130 C 52 132 54 134 56 134 L 74 134 C 76 134 78 132 78 130 L 78 86 Z"
+          fill="url(#gPrimary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.4"/>
+        <!-- Ab segment lines -->
+        <line x1="52" y1="100" x2="78" y2="100" stroke="#22c55e" stroke-width="0.4" stroke-opacity="0.2"/>
+        <line x1="52" y1="114" x2="78" y2="114" stroke="#22c55e" stroke-width="0.4" stroke-opacity="0.2"/>
+        <line x1="52" y1="126" x2="78" y2="126" stroke="#22c55e" stroke-width="0.4" stroke-opacity="0.2"/>
+        <line x1="65" y1="86" x2="65" y2="134" stroke="#22c55e" stroke-width="0.4" stroke-opacity="0.2"/>
+
+        <!-- ── LEFT GLUTE ── -->
+        <ellipse id="left-glute" cx="78" cy="140" rx="13" ry="10"
+          fill="url(#gPrimary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.4"/>
+
+        <!-- ── RIGHT GLUTE ── -->
+        <ellipse id="right-glute" cx="52" cy="140" rx="13" ry="10"
+          fill="url(#gPrimary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.4"/>
+
+        <!-- ── LEFT QUAD ── -->
+        <ellipse id="left-quad" cx="78" cy="162" rx="11" ry="16"
+          fill="url(#gPrimary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.4"/>
+
+        <!-- ── RIGHT QUAD ── -->
+        <ellipse id="right-quad" cx="52" cy="162" rx="11" ry="16"
+          fill="url(#gPrimary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.4"/>
+
+        <!-- ── LEFT HAMSTRING (inner, slightly visible from front) ── -->
+        <ellipse id="left-hamstring" cx="82" cy="165" rx="5" ry="13"
+          fill="url(#gPrimary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.3"/>
+
+        <!-- ── RIGHT HAMSTRING ── -->
+        <ellipse id="right-hamstring" cx="48" cy="165" rx="5" ry="13"
+          fill="url(#gPrimary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.3"/>
+
+        <!-- ── LEFT CALF ── -->
+        <ellipse id="left-calf" cx="78" cy="198" rx="9" ry="13"
+          fill="url(#gSecondary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.3"/>
+
+        <!-- ── RIGHT CALF ── -->
+        <ellipse id="right-calf" cx="52" cy="198" rx="9" ry="13"
+          fill="url(#gSecondary)" stroke="#22c55e" stroke-width="0.5" stroke-opacity="0.3"/>
+
+        <!-- Feet -->
+        <ellipse cx="78" cy="212" rx="9" ry="5" fill="#1e1e1e" stroke="#2a2a2a" stroke-width="0.5"/>
+        <ellipse cx="52" cy="212" rx="9" ry="5" fill="#1e1e1e" stroke="#2a2a2a" stroke-width="0.5"/>
+
+      </svg>
+    </div>
+  </div>
+
+  <!-- ── Selected Workout Summary Bar ── -->
+  <div class="summary-bar">
+    <div class="summary-info">
+      <div class="summary-name">Full Body Bands A</div>
+      <div class="summary-meta">8 exercises · 3 sets · ~32 min</div>
+    </div>
+    <button class="start-btn">▶ START</button>
+  </div>
+
+  <!-- ── Workout List ── -->
+  <div class="list-label">All Workouts</div>
+  <div class="workout-list">
+
+    <!-- Card 1 — SELECTED -->
+    <div class="workout-card selected">
+      <div class="card-body">
+        <div class="card-name">Full Body Bands A</div>
+        <div class="card-tag">Resistance Bands</div>
+        <div class="card-stats">8 exercises · 3 sets · ~32 min</div>
+        <div class="card-last">Last used: Aug 22</div>
+      </div>
+      <!-- Mini muscle map -->
+      <svg class="mini-map" viewBox="0 0 50 80" xmlns="http://www.w3.org/2000/svg">
+        <rect width="50" height="80" rx="6" fill="#192b1f"/>
+        <!-- Head -->
+        <ellipse cx="25" cy="9" rx="6" ry="7" fill="#2d4a3a"/>
+        <!-- Shoulders -->
+        <ellipse cx="14" cy="22" rx="6" ry="4" fill="#22c55e" opacity="0.8"/>
+        <ellipse cx="36" cy="22" rx="6" ry="4" fill="#22c55e" opacity="0.8"/>
+        <!-- Torso/Chest/Abs -->
+        <rect x="18" y="18" width="14" height="22" rx="3" fill="#22c55e" opacity="0.75"/>
+        <!-- Arms -->
+        <rect x="10" y="22" width="5" height="16" rx="2" fill="#22c55e" opacity="0.7"/>
+        <rect x="35" y="22" width="5" height="16" rx="2" fill="#22c55e" opacity="0.7"/>
+        <!-- Glutes -->
+        <ellipse cx="21" cy="42" rx="5" ry="4" fill="#22c55e" opacity="0.8"/>
+        <ellipse cx="29" cy="42" rx="5" ry="4" fill="#22c55e" opacity="0.8"/>
+        <!-- Quads -->
+        <rect x="16" y="44" width="8" height="14" rx="3" fill="#22c55e" opacity="0.75"/>
+        <rect x="26" y="44" width="8" height="14" rx="3" fill="#22c55e" opacity="0.75"/>
+        <!-- Calves -->
+        <rect x="17" y="60" width="6" height="10" rx="2" fill="#22c55e" opacity="0.4"/>
+        <rect x="27" y="60" width="6" height="10" rx="2" fill="#22c55e" opacity="0.4"/>
+      </svg>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="workout-card">
+      <div class="card-body">
+        <div class="card-name">Full Body Bands B</div>
+        <div class="card-tag">Resistance Bands</div>
+        <div class="card-stats">7 exercises · 3 sets · ~28 min</div>
+        <div class="card-last">Last used: Aug 19</div>
+      </div>
+      <svg class="mini-map" viewBox="0 0 50 80" xmlns="http://www.w3.org/2000/svg">
+        <rect width="50" height="80" rx="6" fill="#1a1a1a"/>
+        <ellipse cx="25" cy="9" rx="6" ry="7" fill="#2a2a2a"/>
+        <ellipse cx="14" cy="22" rx="6" ry="4" fill="#22c55e" opacity="0.5"/>
+        <ellipse cx="36" cy="22" rx="6" ry="4" fill="#22c55e" opacity="0.5"/>
+        <rect x="18" y="18" width="14" height="18" rx="3" fill="#22c55e" opacity="0.45"/>
+        <rect x="10" y="22" width="5" height="14" rx="2" fill="#22c55e" opacity="0.4"/>
+        <rect x="35" y="22" width="5" height="14" rx="2" fill="#22c55e" opacity="0.4"/>
+        <ellipse cx="21" cy="42" rx="5" ry="4" fill="#2a2a2a"/>
+        <ellipse cx="29" cy="42" rx="5" ry="4" fill="#2a2a2a"/>
+        <rect x="16" y="44" width="8" height="14" rx="3" fill="#22c55e" opacity="0.5"/>
+        <rect x="26" y="44" width="8" height="14" rx="3" fill="#22c55e" opacity="0.5"/>
+        <rect x="17" y="60" width="6" height="10" rx="2" fill="#2a2a2a"/>
+        <rect x="27" y="60" width="6" height="10" rx="2" fill="#2a2a2a"/>
+      </svg>
+    </div>
+
+    <!-- Card 3 -->
+    <div class="workout-card">
+      <div class="card-body">
+        <div class="card-name">Upper Body Focus</div>
+        <div class="card-tag">Resistance Bands</div>
+        <div class="card-stats">6 exercises · 4 sets · ~30 min</div>
+        <div class="card-last">Last used: Aug 15</div>
+      </div>
+      <svg class="mini-map" viewBox="0 0 50 80" xmlns="http://www.w3.org/2000/svg">
+        <rect width="50" height="80" rx="6" fill="#1a1a1a"/>
+        <ellipse cx="25" cy="9" rx="6" ry="7" fill="#2a2a2a"/>
+        <ellipse cx="14" cy="22" rx="6" ry="4" fill="#22c55e" opacity="0.7"/>
+        <ellipse cx="36" cy="22" rx="6" ry="4" fill="#22c55e" opacity="0.7"/>
+        <rect x="18" y="18" width="14" height="18" rx="3" fill="#22c55e" opacity="0.65"/>
+        <rect x="10" y="22" width="5" height="16" rx="2" fill="#22c55e" opacity="0.7"/>
+        <rect x="35" y="22" width="5" height="16" rx="2" fill="#22c55e" opacity="0.7"/>
+        <ellipse cx="21" cy="42" rx="5" ry="4" fill="#2a2a2a"/>
+        <ellipse cx="29" cy="42" rx="5" ry="4" fill="#2a2a2a"/>
+        <rect x="16" y="44" width="8" height="14" rx="3" fill="#2a2a2a"/>
+        <rect x="26" y="44" width="8" height="14" rx="3" fill="#2a2a2a"/>
+        <rect x="17" y="60" width="6" height="10" rx="2" fill="#2a2a2a"/>
+        <rect x="27" y="60" width="6" height="10" rx="2" fill="#2a2a2a"/>
+      </svg>
+    </div>
+
+    <!-- Card 4 -->
+    <div class="workout-card">
+      <div class="card-body">
+        <div class="card-name">Leg Day</div>
+        <div class="card-tag">Resistance Bands</div>
+        <div class="card-stats">5 exercises · 3 sets · ~22 min</div>
+        <div class="card-last">Last used: Aug 10</div>
+      </div>
+      <svg class="mini-map" viewBox="0 0 50 80" xmlns="http://www.w3.org/2000/svg">
+        <rect width="50" height="80" rx="6" fill="#1a1a1a"/>
+        <ellipse cx="25" cy="9" rx="6" ry="7" fill="#2a2a2a"/>
+        <ellipse cx="14" cy="22" rx="6" ry="4" fill="#2a2a2a"/>
+        <ellipse cx="36" cy="22" rx="6" ry="4" fill="#2a2a2a"/>
+        <rect x="18" y="18" width="14" height="18" rx="3" fill="#2a2a2a"/>
+        <rect x="10" y="22" width="5" height="14" rx="2" fill="#2a2a2a"/>
+        <rect x="35" y="22" width="5" height="14" rx="2" fill="#2a2a2a"/>
+        <ellipse cx="21" cy="42" rx="5" ry="4" fill="#22c55e" opacity="0.65"/>
+        <ellipse cx="29" cy="42" rx="5" ry="4" fill="#22c55e" opacity="0.65"/>
+        <rect x="16" y="44" width="8" height="14" rx="3" fill="#22c55e" opacity="0.7"/>
+        <rect x="26" y="44" width="8" height="14" rx="3" fill="#22c55e" opacity="0.7"/>
+        <rect x="17" y="60" width="6" height="10" rx="2" fill="#22c55e" opacity="0.5"/>
+        <rect x="27" y="60" width="6" height="10" rx="2" fill="#22c55e" opacity="0.5"/>
+      </svg>
+    </div>
+
+    <!-- Card 5 -->
+    <div class="workout-card">
+      <div class="card-body">
+        <div class="card-name">Core &amp; Conditioning</div>
+        <div class="card-tag">Resistance Bands</div>
+        <div class="card-stats">6 exercises · 2 sets · ~18 min</div>
+        <div class="card-last" style="color:#2a2a2a;">Never used</div>
+      </div>
+      <svg class="mini-map" viewBox="0 0 50 80" xmlns="http://www.w3.org/2000/svg">
+        <rect width="50" height="80" rx="6" fill="#1a1a1a"/>
+        <ellipse cx="25" cy="9" rx="6" ry="7" fill="#2a2a2a"/>
+        <ellipse cx="14" cy="22" rx="6" ry="4" fill="#2a2a2a"/>
+        <ellipse cx="36" cy="22" rx="6" ry="4" fill="#2a2a2a"/>
+        <rect x="18" y="18" width="14" height="22" rx="3" fill="#22c55e" opacity="0.7"/>
+        <rect x="10" y="22" width="5" height="14" rx="2" fill="#2a2a2a"/>
+        <rect x="35" y="22" width="5" height="14" rx="2" fill="#2a2a2a"/>
+        <ellipse cx="21" cy="42" rx="5" ry="4" fill="#22c55e" opacity="0.4"/>
+        <ellipse cx="29" cy="42" rx="5" ry="4" fill="#22c55e" opacity="0.4"/>
+        <rect x="16" y="44" width="8" height="14" rx="3" fill="#2a2a2a"/>
+        <rect x="26" y="44" width="8" height="14" rx="3" fill="#2a2a2a"/>
+        <rect x="17" y="60" width="6" height="10" rx="2" fill="#2a2a2a"/>
+        <rect x="27" y="60" width="6" height="10" rx="2" fill="#2a2a2a"/>
+      </svg>
+    </div>
+
+  </div><!-- /workout-list -->
+
+</div><!-- /phone -->
+
+</body>
+</html>
