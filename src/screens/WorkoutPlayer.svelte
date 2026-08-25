@@ -4,6 +4,25 @@
   import { settings } from '../lib/stores/settings.js'
   import { countdownBeep, resumeContext } from '../lib/audio.js'
   import { logWorkout } from '../lib/stores/history.js'
+  import { bandSelections, toggleBand } from '../lib/stores/bandSelections.js'
+
+  // Band definitions — order = lightest → thickest
+  const BANDS = [
+    { id: 'orange', label: 'Orange', color: '#f97316', glow: 'rgba(249,115,22,.5)' },
+    { id: 'red',    label: 'Red',    color: '#ef4444', glow: 'rgba(239,68,68,.5)'  },
+    { id: 'black',  label: 'Black',  color: '#9ca3af', glow: 'rgba(156,163,175,.5)'},
+    { id: 'purple', label: 'Purple', color: '#a855f7', glow: 'rgba(168,85,247,.5)' },
+    { id: 'green',  label: 'Green',  color: '#22c55e', glow: 'rgba(34,197,94,.5)'  },
+  ]
+
+  // Active exercise id for the current step (null during GAP/REST/COMPLETE)
+  $: activeExerciseId = (currentStep?.type === 'EXERCISE' ||
+                         currentStep?.type === 'EXERCISE_RIGHT' ||
+                         currentStep?.type === 'EXERCISE_LEFT')
+    ? currentStep.exercise?.id
+    : null
+
+  $: activeBands = activeExerciseId ? ($bandSelections[activeExerciseId] ?? []) : []
 
   export let workout = null
   export let onClose = () => {}
@@ -250,96 +269,125 @@
       </button>
     </div>
 
-    <div class="flex flex-col px-7 flex-1">
-      <!-- Group / Set badges -->
-      <div class="flex items-center gap-2.5">
-        <span class="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold tracking-[.08em] uppercase bg-[#1e1e1e] text-gray-500">
-          Group {currentStep.group}
-        </span>
-        <div class="w-1.5 h-1.5 rounded-full bg-[#333]"></div>
-        <span class="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold tracking-[.08em] uppercase bg-[#1e1e1e] text-gray-500">
-          Set {currentStep.set} of {currentStep.totalSets}
-        </span>
+    <!-- Main area: band column + content -->
+    <div class="flex flex-1 min-h-0">
+
+      <!-- Band selector — left rail -->
+      <div class="flex flex-col items-center justify-center gap-3 pl-4 pr-2 flex-shrink-0">
+        {#if activeExerciseId}
+          {#each BANDS as band}
+            {@const active = activeBands.includes(band.id)}
+            <button
+              on:click={() => toggleBand(activeExerciseId, band.id)}
+              aria-label="{band.label} band{active ? ' (selected)' : ''}"
+              class="w-9 h-9 rounded-full border-2 transition-all duration-150 flex items-center justify-center"
+              style="
+                background-color: {active ? band.color : 'transparent'};
+                border-color: {active ? band.color : 'rgba(255,255,255,0.12)'};
+                box-shadow: {active ? `0 0 10px ${band.glow}` : 'none'};
+                opacity: {active ? 1 : 0.35};
+              "
+            ></button>
+          {/each}
+        {:else}
+          <!-- Spacer so layout stays stable during GAP -->
+          <div class="w-9" style="height: {BANDS.length * 48}px"></div>
+        {/if}
       </div>
 
-      <!-- Exercise name -->
-      <div class="mt-5 text-[36px] font-extrabold text-white leading-[1.1] tracking-[-0.02em]">
-        {currentStep.type === 'GAP' ? 'Switch Sides' : currentStep.exercise?.name}
-      </div>
+      <!-- Exercise content -->
+      <div class="flex flex-col flex-1 pr-5 min-w-0">
 
-      {#if currentStep.type === 'EXERCISE_RIGHT'}
-        <div class="mt-2.5 text-sm font-bold tracking-[.18em] uppercase text-green-500">▶ RIGHT</div>
-      {:else if currentStep.type === 'EXERCISE_LEFT'}
-        <div class="mt-2.5 text-sm font-bold tracking-[.18em] uppercase text-green-500">▶ LEFT</div>
-      {:else if currentStep.type === 'GAP'}
-        <div class="mt-2.5 text-sm font-bold tracking-[.18em] uppercase text-green-500">GET READY</div>
-      {/if}
-
-      <!-- Timer ring -->
-      <div class="flex-1 flex items-center justify-center flex-col">
-        <div class="relative w-[240px] h-[240px] flex items-center justify-center">
-          <svg width="240" height="240" viewBox="0 0 240 240" class="absolute top-0 left-0">
-            <circle cx="120" cy="120" r="108" fill="none" stroke="#1e1e1e" stroke-width="6"/>
-            <circle
-              cx="120" cy="120" r="108"
-              fill="none"
-              stroke="#22c55e"
-              stroke-width="6"
-              stroke-linecap="round"
-              stroke-dasharray="{circumference}"
-              stroke-dashoffset="{dashOffset}"
-              transform="rotate(-90 120 120)"
-              style="filter: drop-shadow(0 0 8px rgba(34,197,94,.6)); transition: stroke-dashoffset 0.8s linear"
-            />
-          </svg>
-          <span class="relative text-[80px] font-black text-white leading-none tracking-[-0.04em]"
-            style="font-variant-numeric: tabular-nums">
-            {formatTime(timeLeft)}
+        <!-- Group / Set badges -->
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold tracking-[.08em] uppercase bg-[#1e1e1e] text-gray-500">
+            Group {currentStep.group}
+          </span>
+          <div class="w-1.5 h-1.5 rounded-full bg-[#333]"></div>
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold tracking-[.08em] uppercase bg-[#1e1e1e] text-gray-500">
+            Set {currentStep.set} of {currentStep.totalSets}
           </span>
         </div>
-      </div>
 
-      <!-- Controls -->
-      <div class="flex items-center justify-center gap-6 pb-2">
-        <button on:click={goBack} class="w-[52px] h-[52px] rounded-full bg-[#1e1e1e] flex items-center justify-center">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-        </button>
-        <button
-          on:click={togglePause}
-          class="w-[72px] h-[72px] rounded-full bg-green-500 flex items-center justify-center"
-          style="box-shadow: 0 0 32px rgba(34,197,94,.35)"
-        >
-          {#if isPaused}
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5">
-              <polygon points="5 3 19 12 5 21 5 3"/>
-            </svg>
-          {:else}
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5">
-              <line x1="10" y1="7" x2="10" y2="17"/><line x1="14" y1="7" x2="14" y2="17"/>
-            </svg>
-          {/if}
-        </button>
-        <button on:click={skip} class="w-[52px] h-[52px] rounded-full bg-[#1e1e1e] flex items-center justify-center">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-        </button>
-      </div>
+        <!-- Exercise name -->
+        <div class="mt-5 text-[32px] font-extrabold text-white leading-[1.1] tracking-[-0.02em]">
+          {currentStep.type === 'GAP' ? 'Switch Sides' : currentStep.exercise?.name}
+        </div>
 
-      <!-- Next exercise -->
-      {#if nextStep}
-        <div class="mt-7 bg-[#161616] rounded-[14px] p-3.5 flex items-center gap-3 mb-1">
-          <span class="text-[10px] font-bold tracking-[.12em] uppercase text-gray-700 flex-shrink-0">Next</span>
-          <span class="text-sm font-medium text-gray-500">{nextStep.exercise?.name}</span>
-          <span class="ml-auto flex-shrink-0">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#444" stroke-width="2">
+        {#if currentStep.type === 'EXERCISE_RIGHT'}
+          <div class="mt-2.5 text-sm font-bold tracking-[.18em] uppercase text-green-500">▶ RIGHT</div>
+        {:else if currentStep.type === 'EXERCISE_LEFT'}
+          <div class="mt-2.5 text-sm font-bold tracking-[.18em] uppercase text-green-500">▶ LEFT</div>
+        {:else if currentStep.type === 'GAP'}
+          <div class="mt-2.5 text-sm font-bold tracking-[.18em] uppercase text-green-500">GET READY</div>
+        {/if}
+
+        <!-- Timer ring -->
+        <div class="flex-1 flex items-center justify-center flex-col">
+          <div class="relative w-[220px] h-[220px] flex items-center justify-center">
+            <svg width="220" height="220" viewBox="0 0 240 240" class="absolute top-0 left-0">
+              <circle cx="120" cy="120" r="108" fill="none" stroke="#1e1e1e" stroke-width="6"/>
+              <circle
+                cx="120" cy="120" r="108"
+                fill="none"
+                stroke="#22c55e"
+                stroke-width="6"
+                stroke-linecap="round"
+                stroke-dasharray="{circumference}"
+                stroke-dashoffset="{dashOffset}"
+                transform="rotate(-90 120 120)"
+                style="filter: drop-shadow(0 0 8px rgba(34,197,94,.6)); transition: stroke-dashoffset 0.8s linear"
+              />
+            </svg>
+            <span class="relative text-[72px] font-black text-white leading-none tracking-[-0.04em]"
+              style="font-variant-numeric: tabular-nums">
+              {formatTime(timeLeft)}
+            </span>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex items-center justify-center gap-6 pb-2">
+          <button on:click={goBack} class="w-[52px] h-[52px] rounded-full bg-[#1e1e1e] flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          <button
+            on:click={togglePause}
+            class="w-[72px] h-[72px] rounded-full bg-green-500 flex items-center justify-center"
+            style="box-shadow: 0 0 32px rgba(34,197,94,.35)"
+          >
+            {#if isPaused}
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+            {:else}
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5">
+                <line x1="10" y1="7" x2="10" y2="17"/><line x1="14" y1="7" x2="14" y2="17"/>
+              </svg>
+            {/if}
+          </button>
+          <button on:click={skip} class="w-[52px] h-[52px] rounded-full bg-[#1e1e1e] flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
               <polyline points="9 18 15 12 9 6"/>
             </svg>
-          </span>
+          </button>
         </div>
-      {/if}
+
+        <!-- Next exercise -->
+        {#if nextStep}
+          <div class="mt-4 bg-[#161616] rounded-[14px] p-3.5 flex items-center gap-3 mb-1">
+            <span class="text-[10px] font-bold tracking-[.12em] uppercase text-gray-700 flex-shrink-0">Next</span>
+            <span class="text-sm font-medium text-gray-500 truncate">{nextStep.exercise?.name}</span>
+            <span class="ml-auto flex-shrink-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#444" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </span>
+          </div>
+        {/if}
+      </div>
     </div>
   {/if}
 </div>
