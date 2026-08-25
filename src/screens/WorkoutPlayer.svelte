@@ -1,5 +1,5 @@
 <script>
-  import { onDestroy } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
   import { exercises as exercisesStore } from '../lib/stores/exercises.js'
   import { settings } from '../lib/stores/settings.js'
   import { countdownBeep, resumeContext } from '../lib/audio.js'
@@ -55,6 +55,7 @@
   let sequence = buildSequence(workout)
   let stepIndex = 0
   let timeLeft = 0
+  let stepDuration = 0   // stable plain var — NOT reactive, set once per step
   let isPaused = false
   let intervalId = null
 
@@ -73,18 +74,23 @@
   $: completedSteps = sequence.slice(0, stepIndex).filter(s => s.type !== 'REST' && s.type !== 'COMPLETE').length
   $: progress = totalSteps > 0 ? completedSteps / totalSteps : 0
 
-  $: totalDuration = currentStep?.duration ?? 0
-  $: ringProgress = totalDuration > 0 ? timeLeft / totalDuration : 0
+  // Ring: uses stepDuration (plain var) so both numerator and denominator
+  // are always in sync — no reactive lag between them.
+  // ringProgress goes 1→0 as time runs out.
+  // dashOffset = circumference*(1-ringProgress) → ring starts FULL, depletes to empty.
+  $: ringProgress = stepDuration > 0 ? timeLeft / stepDuration : 0
   $: circumference = 2 * Math.PI * 108
-  $: dashOffset = circumference * ringProgress
+  $: dashOffset = circumference * (1 - ringProgress)
 
   function startStep() {
     clearInterval(intervalId)
-    if (!currentStep || currentStep.type === 'COMPLETE') return
-    timeLeft = currentStep.duration
-    if (!isPaused) {
-      tick()
-    }
+    // Read sequence[stepIndex] directly — never rely on the reactive $: currentStep
+    // which may not have settled yet in Svelte 5's async effect scheduling.
+    const step = sequence[stepIndex]
+    if (!step || step.type === 'COMPLETE') return
+    timeLeft = step.duration
+    stepDuration = step.duration   // set denominator atomically with numerator
+    if (!isPaused) tick()
   }
 
   function tick() {
@@ -155,13 +161,16 @@
     return `${m}:${String(sec).padStart(2, '0')}`
   }
 
-  // Initialize
-  $: if (workout) {
+  // Initialize in onMount — guarantees Svelte's reactive graph has fully
+  // settled before we start the timer (fixes "first set broken" bug).
+  onMount(() => {
     sequence = buildSequence(workout)
     stepIndex = 0
     isPaused = false
+    startTime = Date.now()
+    logged = false
     startStep()
-  }
+  })
 
   onDestroy(() => clearInterval(intervalId))
 </script>
