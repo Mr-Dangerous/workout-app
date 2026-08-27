@@ -6,6 +6,7 @@ const defaultSettings = {
   restBetweenSets: 60,
   restBetweenGroups: 90,
   bilateralGap: 5,
+  prepDuration: 20,
   audioCues: true,
   defaultMode: 'resistance-bands',
 }

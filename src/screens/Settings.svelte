@@ -65,6 +65,22 @@
             class="w-20 bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-3 py-2 text-white text-sm text-center outline-none focus:border-green-500/50"
           />
         </div>
+
+        <div class="h-px bg-[#252525]"></div>
+
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-sm font-medium text-white">Prep Duration</div>
+            <div class="text-xs text-gray-600 mt-0.5">Seconds before each exercise</div>
+          </div>
+          <input
+            type="number"
+            bind:value={s.prepDuration}
+            on:change={save}
+            min="0"
+            class="w-20 bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-3 py-2 text-white text-sm text-center outline-none focus:border-green-500/50"
+          />
+        </div>
       </div>
     </div>
 

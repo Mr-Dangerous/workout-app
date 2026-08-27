@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { workouts } from '../lib/stores/workouts.js'
   import { exercises } from '../lib/stores/exercises.js'
+  import { settings } from '../lib/stores/settings.js'
 
   export let onStart = () => {}
   export let onEdit = () => {}
@@ -39,12 +40,14 @@
   $: totalTime = (() => {
     if (!selectedWorkout) return 0
     const exMap = Object.fromEntries($exercises.map(e => [e.id, e]))
+    const prep = $settings.prepDuration ?? 20
     let t = 0
     for (const group of selectedWorkout.groups) {
       for (let s = 0; s < group.sets; s++) {
         for (const ex of group.exercises) {
           const exercise = exMap[ex.exerciseId]
           const dur = ex.duration || exercise?.defaultDuration || 30
+          t += prep  // PREP before each exercise (not before left side)
           if (exercise?.bilateral) {
             t += dur * 2 + (ex.bilateralGap ?? exercise.bilateralGap ?? 5)
           } else {

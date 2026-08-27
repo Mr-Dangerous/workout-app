@@ -15,7 +15,7 @@
     { id: 'green',  label: 'Green',  color: '#22c55e', glow: 'rgba(34,197,94,.5)'  },
   ]
 
-  // Active exercise id for the current step (null during GAP/REST/COMPLETE)
+  // Active exercise id for the current step (null during GAP/REST/PREP/COMPLETE)
   $: activeExerciseId = (currentStep?.type === 'EXERCISE' ||
                          currentStep?.type === 'EXERCISE_RIGHT' ||
                          currentStep?.type === 'EXERCISE_LEFT')
@@ -31,7 +31,7 @@
   let logged = false
 
   // ── State machine states ──
-  // EXERCISE_RIGHT, GAP, EXERCISE_LEFT, EXERCISE (unilateral), REST, COMPLETE
+  // PREP, EXERCISE_RIGHT, GAP, EXERCISE_LEFT, EXERCISE (unilateral), REST, COMPLETE
 
   let exMap = Object.fromEntries($exercisesStore.map(e => [e.id, e]))
 
@@ -39,6 +39,8 @@
   function buildSequence(w) {
     if (!w) return []
     const steps = []
+    const prep = $settings.prepDuration ?? 20
+
     for (let gi = 0; gi < w.groups.length; gi++) {
       const group = w.groups[gi]
       for (let si = 0; si < group.sets; si++) {
@@ -48,6 +50,11 @@
           if (!ex) continue
           const dur = wex.duration ?? ex.defaultDuration ?? 30
           const gap = wex.bilateralGap ?? ex.bilateralGap ?? $settings.bilateralGap ?? 5
+
+          // Insert PREP before every exercise (but NOT before the left side of bilateral)
+          if (prep > 0) {
+            steps.push({ type: 'PREP', exercise: ex, wex, duration: prep, group: group.label, set: si + 1, totalSets: group.sets, gi, si, ei })
+          }
 
           if (ex.bilateral) {
             steps.push({ type: 'EXERCISE_RIGHT', exercise: ex, wex, duration: dur, group: group.label, set: si + 1, totalSets: group.sets, gi, si, ei })
@@ -89,8 +96,20 @@
     return null
   }
 
-  $: totalSteps = sequence.filter(s => s.type !== 'REST' && s.type !== 'COMPLETE').length
-  $: completedSteps = sequence.slice(0, stepIndex).filter(s => s.type !== 'REST' && s.type !== 'COMPLETE').length
+  // Next PREP step — for showing "upcoming" on REST screen
+  function findNextPrepStep(fromIdx) {
+    for (let i = fromIdx; i < sequence.length; i++) {
+      const s = sequence[i]
+      if (s.type === 'PREP') return s
+      if (s.type === 'EXERCISE' || s.type === 'EXERCISE_RIGHT') return s
+    }
+    return null
+  }
+
+  $: upcomingStep = findNextPrepStep(stepIndex + 1)
+
+  $: totalSteps = sequence.filter(s => s.type !== 'REST' && s.type !== 'PREP' && s.type !== 'COMPLETE').length
+  $: completedSteps = sequence.slice(0, stepIndex).filter(s => s.type !== 'REST' && s.type !== 'PREP' && s.type !== 'COMPLETE').length
   $: progress = totalSteps > 0 ? completedSteps / totalSteps : 0
 
   // Ring: uses stepDuration (plain var) so both numerator and denominator
@@ -227,22 +246,27 @@
     </div>
 
     <div class="flex-1 flex flex-col items-center justify-center px-7 pb-8">
-      <div class="text-xs font-bold tracking-[.14em] uppercase text-gray-500 mb-4">Rest</div>
+
+      <!-- Upcoming exercise — prominent at top of rest -->
+      {#if upcomingStep}
+        <div class="w-full mb-8 text-center">
+          <div class="text-[11px] font-bold tracking-[.16em] uppercase text-amber-500/80 mb-2">Up Next</div>
+          <div class="text-3xl font-black text-white leading-tight">{upcomingStep.exercise?.name}</div>
+          {#if upcomingStep.exercise?.bilateral}
+            <div class="text-xs font-bold tracking-[.14em] uppercase text-green-500 mt-1.5">RIGHT SIDE FIRST</div>
+          {/if}
+          <div class="mt-2 text-xs text-gray-600">
+            Set {upcomingStep.set} of {upcomingStep.totalSets} · Group {upcomingStep.group}
+          </div>
+        </div>
+      {/if}
+
+      <div class="text-xs font-bold tracking-[.14em] uppercase text-gray-500 mb-3">Rest</div>
       <div class="text-[96px] font-black text-white leading-none tracking-[-0.05em] tabular-nums mb-3"
         style="font-variant-numeric: tabular-nums">
         {formatTime(timeLeft)}
       </div>
       <div class="text-sm text-gray-600">{currentStep.label}</div>
-
-      {#if nextStep}
-        <div class="mt-10 text-center">
-          <div class="text-[11px] font-bold tracking-[.12em] uppercase text-gray-700 mb-2">Up Next</div>
-          <div class="text-xl font-bold text-white">{nextStep.exercise?.name}</div>
-          {#if nextStep.exercise?.bilateral}
-            <div class="text-xs font-bold tracking-[.14em] uppercase text-green-500 mt-1">RIGHT SIDE</div>
-          {/if}
-        </div>
-      {/if}
 
       <button
         on:click={skip}
@@ -252,8 +276,90 @@
       </button>
     </div>
 
+  {:else if currentStep.type === 'PREP'}
+    <!-- PREP SCREEN — get ready for the next exercise -->
+    <!-- Progress bar -->
+    <div class="h-[3px] bg-[#1f1f1f] flex-shrink-0">
+      <div class="h-full bg-green-500 transition-all duration-300" style="width: {progress * 100}%"></div>
+    </div>
+
+    <div class="flex items-center justify-between px-7 py-4 flex-shrink-0">
+      <span class="text-xs font-bold tracking-[.1em] uppercase text-gray-600">{workout?.name}</span>
+      <button on:click={onClose} class="w-8 h-8 rounded-full bg-[#1e1e1e] flex items-center justify-center">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="flex-1 flex flex-col items-center justify-center px-7 pb-8">
+
+      <!-- Exercise name — the whole point of PREP -->
+      <div class="text-center mb-8">
+        <div class="text-[11px] font-bold tracking-[.16em] uppercase text-amber-500 mb-3">Get Ready</div>
+        <div class="text-4xl font-black text-white leading-tight">{currentStep.exercise?.name}</div>
+        {#if currentStep.exercise?.bilateral}
+          <div class="text-sm font-bold tracking-[.14em] uppercase text-green-500 mt-2">RIGHT SIDE FIRST</div>
+        {/if}
+        <div class="mt-2 text-xs text-gray-600">
+          Set {currentStep.set} of {currentStep.totalSets} · Group {currentStep.group}
+        </div>
+      </div>
+
+      <!-- Timer ring — amber accent during PREP -->
+      <div class="relative w-[220px] h-[220px] flex items-center justify-center">
+        <svg width="220" height="220" viewBox="0 0 240 240" class="absolute top-0 left-0">
+          <circle cx="120" cy="120" r="108" fill="none" stroke="#1e1e1e" stroke-width="6"/>
+          <circle
+            cx="120" cy="120" r="108"
+            fill="none"
+            stroke="#f59e0b"
+            stroke-width="6"
+            stroke-linecap="round"
+            stroke-dasharray="{circumference}"
+            stroke-dashoffset="{dashOffset}"
+            transform="rotate(-90 120 120)"
+            style="filter: drop-shadow(0 0 8px rgba(245,158,11,.6)); transition: stroke-dashoffset 0.8s linear"
+          />
+        </svg>
+        <span class="relative text-[72px] font-black text-white leading-none tracking-[-0.04em]"
+          style="font-variant-numeric: tabular-nums">
+          {formatTime(timeLeft)}
+        </span>
+      </div>
+
+      <!-- Controls -->
+      <div class="flex items-center justify-center gap-6 mt-8">
+        <button on:click={goBack} class="w-[52px] h-[52px] rounded-full bg-[#1e1e1e] flex items-center justify-center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <button
+          on:click={togglePause}
+          class="w-[72px] h-[72px] rounded-full bg-amber-500 flex items-center justify-center"
+          style="box-shadow: 0 0 32px rgba(245,158,11,.35)"
+        >
+          {#if isPaused}
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+          {:else}
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5">
+              <line x1="10" y1="7" x2="10" y2="17"/><line x1="14" y1="7" x2="14" y2="17"/>
+            </svg>
+          {/if}
+        </button>
+        <button on:click={skip} class="w-[52px] h-[52px] rounded-full bg-[#1e1e1e] flex items-center justify-center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
   {:else}
-    <!-- EXERCISE SCREEN -->
+    <!-- EXERCISE SCREEN (EXERCISE, EXERCISE_RIGHT, EXERCISE_LEFT, GAP) -->
     <!-- Progress bar -->
     <div class="h-[3px] bg-[#1f1f1f] flex-shrink-0">
       <div class="h-full bg-green-500 transition-all duration-300" style="width: {progress * 100}%"></div>
